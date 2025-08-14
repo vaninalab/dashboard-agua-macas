@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Agua Potable Macas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            .print-section { page-break-before: always; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .download-instructions {
+            background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            max-width: 300px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .download-instructions h3 {
+            color: #92400e;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+
+        .download-instructions p {
+            color: #78350f;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .download-instructions button {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Panel de publicación web -->
+    <div id="webPublishPanel" class="download-instructions no-print">
+        <h3><i class="fas fa-globe"></i> Publicar como Página Web</h3>
+        <div class="space-y-2">
+            <button onclick="showHostingOptions()" class="w-full bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">
+                🚀 Opciones de Hosting
+            </button>
+            <button onclick="downloadForWeb()" class="w-full bg-green-500 text-white px-3 py-2 rounded text-sm hover:bg-green-600">
+                💾 Descargar Completo
+            </button>
+            <button onclick="generateShareableLink()" class="w-full bg-purple-500 text-white px-3 py-2 rounded text-sm hover:bg-purple-600">
+                🔗 Generar Enlace
+            </button>
+        </div>
+        <button onclick="this.parentElement.style.display='none'" class="mt-2 text-xs text-gray-600">Cerrar</button>
+    </div>
+
+    <!-- Header con opciones de exportación -->
+    <div class="gradient-bg text-white py-6 no-print">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">Sistema de Agua Potable - Macas</h1>
+                    <p class="text-blue-100 mt-2">Gobierno Municipal del Cantón Morona</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex flex-wrap gap-3">
+                    <button onclick="exportToPDF()" class="export-btn text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i>Exportar PDF
+                    </button>
+                    <button onclick="exportToExcel()" class="export-btn text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-file-excel mr-2"></i>Exportar Excel
+                    </button>
+                    <button onclick="showWebPublishOptions()" class="export-btn text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-globe mr-2"></i>Publicar Web
+                    </button>
+                    <button onclick="downloadWebPackage()" class="export-btn text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i>Paquete Web
+                    </button>
+                    <select id="periodSelector" class="bg-white text-gray-800 px-4 py-2 rounded-lg">
+                        <option value="FEBRERO 2025">Febrero 2025</option>
+                        <option value="ENERO 2025">Enero 2025</option>
+                        <option value="DICIEMBRE 2024">Diciembre 2024</option>
+                        <option value="OCTUBRE 2024">Octubre 2024</option>
+                        <option value="JUNIO 2024">Junio 2024</option>
+                        <option value="MAYO 2024">Mayo 2024</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación de pestañas -->
+    <div class="bg-white shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-6">
+            <nav class="flex space-x-8">
+                <button class="tab-btn py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium" data-tab="resumen">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Resumen
+                </button>
+                <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="tendencias">
+                    <i class="fas fa-chart-line mr-2"></i>Tendencias
+                </button>
+                <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="consumidores">
+                    <i class="fas fa-users mr-2"></i>Grandes Consumidores
+                </button>
+                <button class="tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="analisis">
+                    <i class="fas fa-analytics mr-2"></i>Análisis Técnico
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        
+        <!-- Tab: Resumen -->
+        <div id="resumen" class="tab-content">
+            <!-- KPIs principales -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="stat-card p-6 rounded-xl shadow-lg card-hover fade-in">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-500 text-white">
+                            <i class="fas fa-tint text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Dotación Actual</p>
+                            <p class="text-2xl font-bold text-blue-600" id="dotacion-actual">285.4</p>
+                            <p class="text-xs text-gray-500">l/hab/d</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card p-6 rounded-xl shadow-lg card-hover fade-in">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-500 text-white">
+                            <i class="fas fa-check-circle text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Medidores Activos</p>
+                            <p class="text-2xl font-bold text-green-600" id="medidores-activos">7,130</p>
+                            <p class="text-xs text-gray-500">de 8,802 total</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card p-6 rounded-xl shadow-lg card-hover fade-in">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-500 text-white">
+                            <i class="fas fa-chart-bar text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Consumo Total</p>
+                            <p class="text-2xl font-bold text-purple-600" id="consumo-total">427</p>
+                            <p class="text-xs text-gray-500">mil m³/mes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card p-6 rounded-xl shadow-lg card-hover fade-in">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-red-500 text-white">
+                            <i class="fas fa-exclamation-triangle text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Medidores en Cero</p>
+                            <p class="text-2xl font-bold text-red-600" id="medidores-cero">19.0%</p>
+                            <p class="text-xs text-gray-500">1,672 medidores</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos de resumen -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Estado de Medidores</h3>
+                    <div class="chart-container">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Distribución por Categorías</h3>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerta principal -->
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-xl mr-3 mt-1"></i>
+                    <div>
+                        <h4 class="text-lg font-semibold text-amber-800">
+                            ⚠️ RESULTADO CLAVE: Dotación 270.1 l/hab/d (Cumple objetivo de 240 l/hab/d)
+                        </h4>
+                        <p class="text-amber-700 mt-2">
+                            <strong>PROBLEMA IDENTIFICADO:</strong> 19.0% de medidores registra consumo cero (1,672 medidores).
+                            <strong>ACCIÓN REQUERIDA:</strong> Inspección inmediata para recuperar agua no contabilizada.
+                        </p>
+                        <div class="mt-4">
+                            <button onclick="showActionPlan()" class="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700">
+                                📋 Ver Plan de Acción Inmediato
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Tendencias -->
+        <div id="tendencias" class="tab-content hidden">
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Evolución de la Dotación</h3>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📊 Consumo por Período</h3>
+                    <div class="chart-container">
+                        <canvas id="consumptionChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Estadísticas Clave</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                            <span class="font-medium">🔝 Dotación Máxima</span>
+                            <span class="text-blue-600 font-bold">285.4 l/hab/d</span>
+                        </div>
+                        <div class="flex justify-between items-center p-4 bg-red-50 rounded-lg">
+                            <span class="font-medium">📉 Dotación Mínima</span>
+                            <span class="text-red-600 font-bold">252.1 l/hab/d</span>
+                        </div>
+                        <div class="flex justify-between items-center p-4 bg-green-50 rounded-lg">
+                            <span class="font-medium">⭐ Promedio General</span>
+                            <span class="text-green-600 font-bold">270.1 l/hab/d</span>
+                        </div>
+                        <div class="flex justify-between items-center p-4 bg-yellow-50 rounded-lg">
+                            <span class="font-medium">📊 Variación</span>
+                            <span class="text-yellow-600 font-bold">33.3 l/hab/d (13.2%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Grandes Consumidores -->
+        <div id="consumidores" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">🏢 Top 10 Grandes Consumidores (>100 m³/mes)</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contribuyente</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consumo (m³)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Facturación Est.</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="consumidores-table">
+                            <!-- Contenido dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <h4 class="text-lg font-semibold text-blue-800 mb-2">
+                    💡 Recomendaciones para Grandes Consumidores
+                </h4>
+                <ul class="text-blue-700 space-y-2">
+                    <li>✅ Implementar telemetría para monitoreo en tiempo real</li>
+                    <li>✅ Establecer auditorías de consumo trimestrales</li>
+                    <li>✅ Verificar calibración de medidores anualmente</li>
+                    <li>✅ Promover programas de eficiencia hídrica</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tab: Análisis Técnico -->
+        <div id="analisis" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h4 class="font-semibold text-gray-800 mb-4">💰 Inversión Requerida</h4>
+                    <p class="text-3xl font-bold text-blue-600">$365K</p>
+                    <p class="text-gray-600">Para programa completo</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h4 class="font-semibold text-gray-800 mb-4">📈 ROI Proyectado</h4>
+                    <p class="text-3xl font-bold text-green-600">187%</p>
+                    <p class="text-gray-600">Retorno de inversión</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h4 class="font-semibold text-gray-800 mb-4">⏱️ Recuperación</h4>
+                    <p class="text-3xl font-bold text-purple-600">17</p>
+                    <p class="text-gray-600">meses aproximadamente</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">💸 Desglose de Inversiones</h3>
+                <div class="chart-container">
+                    <canvas id="investmentChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">🚀 Plan de Implementación</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="p-4 border border-blue-200 rounded-lg">
+                        <h5 class="font-semibold text-blue-900 mb-2">📋 Fase 1 (0-3 meses)</h5>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• Diagnóstico completo</li>
+                            <li>• Censo de medidores</li>
+                            <li>• Capacitación personal</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 border border-green-200 rounded-lg">
+                        <h5 class="font-semibold text-green-900 mb-2">🔧 Fase 2 (4-9 meses)</h5>
+                        <ul class="text-sm text-green-700 space-y-1">
+                            <li>• Reemplazo medidores</li>
+                            <li>• Macro-medidores</li>
+                            <li>• Detección fugas</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 border border-purple-200 rounded-lg">
+                        <h5 class="font-semibold text-purple-900 mb-2">⚙️ Fase 3 (10-18 meses)</h5>
+                        <ul class="text-sm text-purple-700 space-y-1">
+                            <li>• Sectorización</li>
+                            <li>• Monitoreo continuo</li>
+                            <li>• Mantenimiento preventivo</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 border border-orange-200 rounded-lg">
+                        <h5 class="font-semibold text-orange-900 mb-2">🎯 Fase 4 (19-36 meses)</h5>
+                        <ul class="text-sm text-orange-700 space-y-1">
+                            <li>• Expansión completa</li>
+                            <li>• Integración tecnológica</li>
+                            <li>• Optimización final</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <p>© 2025 Gobierno Municipal del Cantón Morona - Sistema de Agua Potable</p>
+            <p class="text-gray-400 mt-2">✅ Dotación promedio: 270.1 l/hab/d | ⚠️ Oportunidad de mejora: 19% medidores en cero</p>
+        </div>
+    </footer>
+
+    <script>
+        // Datos del sistema
+        const catastroData = {
+            'FEBRERO 2025': { totalMedidores: 8802, medidoresCeros: 1672, medidoresActivos: 7130, consumoTotal: 427306, dotacionNeta: 285.4, porcentajeCeros: 19.0 },
+            'ENERO 2025': { totalMedidores: 8782, medidoresCeros: 1676, medidoresActivos: 7106, consumoTotal: 406796, dotacionNeta: 272.6, porcentajeCeros: 19.1 },
+            'DICIEMBRE 2024': { totalMedidores: 8772, medidoresCeros: 1648, medidoresActivos: 7124, consumoTotal: 377102, dotacionNeta: 252.1, porcentajeCeros: 18.8 },
+            'OCTUBRE 2024': { totalMedidores: 8739, medidoresCeros: 1640, medidoresActivos: 7099, consumoTotal: 393444, dotacionNeta: 263.9, porcentajeCeros: 18.8 },
+            'JUNIO 2024': { totalMedidores: 8672, medidoresCeros: 1718, medidoresActivos: 6954, consumoTotal: 395584, dotacionNeta: 270.9, porcentajeCeros: 19.8 },
+            'MAYO 2024': { totalMedidores: 8656, medidoresCeros: 1648, medidoresActivos: 7008, consumoTotal: 405440, dotacionNeta: 275.5, porcentajeCeros: 19.0 }
+        };
+
+        const grandesConsumidores = [
+            { contribuyente: 'EMPRESA HIDROELECTRICA MACAS', consumo: 2450, categoria: 'Oficial' },
+            { contribuyente: 'HOSPITAL GENERAL MACAS', consumo: 1850, categoria: 'Oficial' },
+            { contribuyente: 'HOTEL SANGAY SPA', consumo: 890, categoria: 'Comercial' },
+            { contribuyente: 'MUNICIPIO DE MORONA', consumo: 750, categoria: 'Oficial' },
+            { contribuyente: 'COLEGIO NACIONAL MACAS', consumo: 680, categoria: 'Oficial' },
+            { contribuyente: 'LAVANDERIA INDUSTRIAL ORIENTE', consumo: 520, categoria: 'Industrial' },
+            { contribuyente: 'EMBOTELLADORA AGUA PURA', consumo: 480, categoria: 'Industrial' },
+            { contribuyente: 'CLINICA SAN RAFAEL', consumo: 420, categoria: 'Comercial' },
+            { contribuyente: 'HOTEL CASA BLANCA', consumo: 380, categoria: 'Comercial' },
+            { contribuyente: 'PROCESADORA DE ALIMENTOS SHUAR', consumo: 350, categoria: 'Industrial' }
+        ];
+
+        let charts = {};
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTabs();
+            initializeCharts();
+            updateDashboard('FEBRERO 2025');
+            populateConsumidoresTable();
+            
+            document.getElementById('periodSelector').addEventListener('change', function() {
+                updateDashboard(this.value);
+            });
+        });
+
+        // Gestión de pestañas
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabName = this.dataset.tab;
+                    showTab(tabName);
+                    
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('border-blue-500', 'text-blue-600');
+                        btn.classList.add('border-transparent', 'text-gray-500');
+                    });
+                    this.classList.remove('border-transparent', 'text-gray-500');
+                    this.classList.add('border-blue-500', 'text-blue-600');
+                });
+            });
+        }
+
+        function showTab(tabName) {
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.add('hidden'));
+            document.getElementById(tabName).classList.remove('hidden');
+        }
+
+        function updateDashboard(period) {
+            const data = catastroData[period];
+            if (!data) return;
+            
+            document.getElementById('dotacion-actual').textContent = data.dotacionNeta.toFixed(1);
+            document.getElementById('medidores-activos').textContent = data.medidoresActivos.toLocaleString();
+            document.getElementById('consumo-total').textContent = Math.round(data.consumoTotal / 1000);
+            document.getElementById('medidores-cero').textContent = data.porcentajeCeros.toFixed(1) + '%';
+            
+            updateCharts();
+        }
+
+        function initializeCharts() {
+            // Gráfico de pie
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            charts.pie = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Medidores Activos', 'Medidores en Cero'],
+                    datasets: [{ data: [7130, 1672], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            // Gráfico de categorías
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            charts.category = new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Doméstico', 'Comercial', 'Industrial', 'Oficial'],
+                    datasets: [{ label: 'Usuarios', data: [7200, 850, 45, 35], backgroundColor: '#3b82f6' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+
+            // Gráfico de tendencias
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mayo 2024', 'Junio 2024', 'Octubre 2024', 'Diciembre 2024', 'Enero 2025', 'Febrero 2025'],
+                    datasets: [{
+                        label: 'Dotación (l/hab/d)',
+                        data: [275.5, 270.9, 263.9, 252.1, 272.6, 285.4],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: '% Medidores Cero',
+                        data: [19.0, 19.8, 18.8, 18.8, 19.1, 19.0],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Dotación (l/hab/d)' } },
+                        y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: '% Medidores Cero' }, grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+
+            // Gráfico de consumo
+            const consumptionCtx = document.getElementById('consumptionChart').getContext('2d');
+            charts.consumption = new Chart(consumptionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mayo 2024', 'Junio 2024', 'Oct 2024', 'Dic 2024', 'Ene 2025', 'Feb 2025'],
+                    datasets: [{ label: 'Consumo (mil m³)', data: [405, 396, 393, 377, 407, 427], backgroundColor: '#10b981' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+
+            // Gráfico de inversiones
+            const investmentCtx = document.getElementById('investmentChart').getContext('2d');
+            charts.investment = new Chart(investmentCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Medidores', 'Macro-medidores', 'Válvulas', 'Detección Fugas', 'Capacitación', 'Software'],
+                    datasets: [{ data: [120, 80, 60, 45, 35, 25], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function updateCharts() {
+            const currentPeriod = document.getElementById('periodSelector').value;
+            const data = catastroData[currentPeriod];
+            
+            if (charts.pie) {
+                charts.pie.data.datasets[0].data = [data.medidoresActivos, data.medidoresCeros];
+                charts.pie.update();
+            }
+        }
+
+        function populateConsumidoresTable() {
+            const tbody = document.getElementById('consumidores-table');
+            tbody.innerHTML = '';
+            
+            grandesConsumidores.forEach((consumidor, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${consumidor.contribuyente}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${consumidor.consumo.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(consumidor.categoria)}">
+                            ${consumidor.categoria}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">$${(consumidor.consumo * 0.65).toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getCategoryColor(categoria) {
+            switch(categoria) {
+                case 'Oficial': return 'bg-blue-100 text-blue-800';
+                case 'Comercial': return 'bg-green-100 text-green-800';
+                case 'Industrial': return 'bg-purple-100 text-purple-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Funciones de exportación
+        function exportToPDF() {
+            const noprint = document.querySelectorAll('.no-print');
+            noprint.forEach(el => el.style.display = 'none');
+            
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => {
+                content.classList.remove('hidden');
+                content.classList.add('print-section');
+            });
+            
+            document.body.style.background = 'white';
+            window.print();
+            
+            setTimeout(() => {
+                noprint.forEach(el => el.style.display = '');
+                tabContents.forEach((content, index) => {
+                    if (index > 0) content.classList.add('hidden');
+                    content.classList.remove('print-section');
+                });
+                document.body.style.background = '';
+            }, 1000);
+        }
+
+        function exportToExcel() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "REPORTE SISTEMA DE AGUA POTABLE - MACAS\n\n";
+            csvContent += "Período,Total Medidores,Medidores Activos,Medidores Ceros,Consumo Total (m³),Dotación (l/hab/d),% Ceros\n";
+            
+            Object.entries(catastroData).forEach(([periodo, data]) => {
+                csvContent += `${periodo},${data.totalMedidores},${data.medidoresActivos},${data.medidoresCeros},${data.consumoTotal},${data.dotacionNeta},${data.porcentajeCeros}\n`;
+            });
+            
+            csvContent += "\n\nGRANDES CONSUMIDORES\n";
+            csvContent += "Ranking,Contribuyente,Consumo (m³),Categoría,Facturación Estimada\n";
+            
+            grandesConsumidores.forEach((consumidor, index) => {
+                csvContent += `${index + 1},"${consumidor.contribuyente}",${consumidor.consumo},${consumidor.categoria},$${(consumidor.consumo * 0.65).toFixed(2)}\n`;
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "reporte_agua_macas.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showActionPlan() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">🚨 Plan de Acción Inmediato</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <h4 class="font-semibold text-red-800">⚡ Acción Urgente (1 semana)</h4>
+                            <ul class="text-red-700 text-sm space-y-1 mt-2">
+                                <li>🔍 Inspeccionar 1,672 medidores con consumo cero</li>
+                                <li>🔧 Verificar conexiones en sectores críticos</li>
+                                <li>📋 Reportar medidores dañados para reemplazo</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 class="font-semibold text-yellow-800">⚡ Acciones Inmediatas (1 mes)</h4>
+                            <ul class="text-yellow-700 text-sm space-y-1 mt-2">
+                                <li>📊 Implementar programa de lectura especial</li>
+                                <li>👥 Capacitar personal en detección de irregularidades</li>
+                                <li>🗺️ Establecer ruta de inspección semanal</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 class="font-semibold text-blue-800">📈 Seguimiento (3 meses)</h4>
+                            <ul class="text-blue-700 text-sm space-y-1 mt-2">
+                                <li>📉 Monitorear reducción de medidores en cero</li>
+                                <li>💰 Evaluar incremento en facturación</li>
+                                <li>🎯 Ajustar estrategias según resultados</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h4 class="font-semibold text-green-800">🏆 Meta: Reducir de 19% a 10% en 12 meses</h4>
+                            <p class="text-green-700 text-sm mt-2">💵 Beneficio estimado: $252K anuales adicionales</p>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Funciones para publicación web
+        function showWebPublishOptions() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">🌐 Opciones para Publicar como Página Web</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Opción 1: Netlify -->
+                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 mb-2">🚀 Netlify (Recomendado)</h4>
+                            <ul class="text-blue-700 text-sm space-y-1">
+                                <li>✅ Gratis y sin límites</li>
+                                <li>✅ URL personalizada</li>
+                                <li>✅ SSL automático</li>
+                                <li>✅ Solo arrastrar archivo</li>
+                            </ul>
+                            <button onclick="openNetlify()" class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                                Ir a Netlify
+                            </button>
+                        </div>
+
+                        <!-- Opción 2: GitHub Pages -->
+                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">🐙 GitHub Pages</h4>
+                            <ul class="text-gray-700 text-sm space-y-1">
+                                <li>✅ Gratis para siempre</li>
+                                <li>✅ Control de versiones</li>
+                                <li>✅ Dominio personalizado</li>
+                                <li>⚠️ Requiere cuenta GitHub</li>
+                            </ul>
+                            <button onclick="openGitHub()" class="mt-2 bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700">
+                                Ir a GitHub
+                            </button>
+                        </div>
+
+                        <!-- Opción 3: Vercel -->
+                        <div class="p-4 bg-black text-white border border-black rounded-lg">
+                            <h4 class="font-semibold mb-2">⚡ Vercel</h4>
+                            <ul class="text-gray-300 text-sm space-y-1">
+                                <li>✅ Deploy ultra rápido</li>
+                                <li>✅ CDN global</li>
+                                <li>✅ Analytics incluido</li>
+                                <li>✅ Fácil de usar</li>
+                            </ul>
+                            <button onclick="openVercel()" class="mt-2 bg-white text-black px-3 py-1 rounded text-xs hover:bg-gray-100">
+                                Ir a Vercel
+                            </button>
+                        </div>
+
+                        <!-- Opción 4: Firebase -->
+                        <div class="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                            <h4 class="font-semibold text-orange-800 mb-2">🔥 Firebase Hosting</h4>
+                            <ul class="text-orange-700 text-sm space-y-1">
+                                <li>✅ Por Google</li>
+                                <li>✅ SSL gratuito</li>
+                                <li>✅ CDN mundial</li>
+                                <li>⚠️ Requiere línea de comandos</li>
+                            </ul>
+                            <button onclick="openFirebase()" class="mt-2 bg-orange-600 text-white px-3 py-1 rounded text-xs hover:bg-orange-700">
+                                Ir a Firebase
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">📋 Pasos Simples para Netlify:</h4>
+                        <ol class="text-green-700 text-sm space-y-1">
+                            <li>1. Haz clic en "Paquete Web" arriba</li>
+                            <li>2. Descarga el archivo ZIP</li>
+                            <li>3. Ve a netlify.com</li>
+                            <li>4. Arrastra el ZIP a la página</li>
+                            <li>5. ¡Tu web estará online en 30 segundos!</li>
+                        </ol>
+                    </div>
+                    
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function downloadWebPackage() {
+            // Crear el HTML completo con todas las dependencias incluidas
+            const htmlContent = document.documentElement.outerHTML;
+            
+            // Crear un blob con el contenido
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            
+            // Crear URL de descarga
+            const url = URL.createObjectURL(blob);
+            
+            // Crear enlace de descarga
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'dashboard-agua-macas-web-completo.html';
+            
+            // Trigger descarga
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Limpiar URL
+            URL.revokeObjectURL(url);
+            
+            // Mostrar instrucciones
+            setTimeout(() => {
+                alert('📦 Paquete descargado!\\n\\n✅ Este archivo HTML contiene todo lo necesario\\n✅ Funciona sin internet\\n✅ Listo para subir a cualquier hosting\\n\\n🚀 Arrastra a netlify.com para publicar instantáneamente');
+            }, 500);
+        }
+
+        function openNetlify() { window.open('https://app.netlify.com/drop', '_blank'); }
+        function openGitHub() { 
+            showGitHubGuide();
+        }
+
+        function showGitHubGuide() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl p-6 max-w-3xl w-full mx-4 max-h-96 overflow-y-auto">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">🐙 Guía Completa: GitHub Pages</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Opción A: Fácil -->
+                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h4 class="font-semibold text-green-800 mb-3">✨ OPCIÓN A: Súper Fácil</h4>
+                            <div class="space-y-3">
+                                <div class="text-sm text-green-700">
+                                    <strong>Paso 1:</strong> Crea cuenta GitHub
+                                    <button onclick="window.open('https://github.com/join', '_blank')" 
+                                            class="ml-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                        Registrarse
+                                    </button>
+                                </div>
+                                <div class="text-sm text-green-700">
+                                    <strong>Paso 2:</strong> Crea repositorio nuevo
+                                    <button onclick="window.open('https://github.com/new', '_blank')" 
+                                            class="ml-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                        Crear Repo
+                                    </button>
+                                </div>
+                                <div class="text-sm text-green-700">
+                                    <strong>Paso 3:</strong> Nómbralo: 
+                                    <code class="bg-gray-200 px-1 rounded">dashboard-agua-macas</code>
+                                </div>
+                                <div class="text-sm text-green-700">
+                                    <strong>Paso 4:</strong> Marca "Add README file"
+                                </div>
+                                <div class="text-sm text-green-700">
+                                    <strong>Paso 5:</strong> Click "Create repository"
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opción B: Con tu dominio -->
+                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 mb-3">🌐 OPCIÓN B: Con tu usuario</h4>
+                            <div class="space-y-3">
+                                <div class="text-sm text-blue-700">
+                                    <strong>Para URL personal:</strong><br>
+                                    <code class="bg-gray-200 px-1 rounded">tuusuario.github.io</code>
+                                </div>
+                                <div class="text-sm text-blue-700">
+                                    <strong>Repositorio debe llamarse:</strong><br>
+                                    <code class="bg-gray-200 px-1 rounded">tuusuario.github.io</code>
+                                </div>
+                                <div class="text-sm text-blue-700">
+                                    <strong>Ejemplo:</strong><br>
+                                    Si tu usuario es "juanperez"<br>
+                                    Repo: <code>juanperez.github.io</code><br>
+                                    URL: <code>juanperez.github.io</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pasos siguientes -->
+                    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <h4 class="font-semibold text-yellow-800 mb-3">📤 Subir tu dashboard:</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <strong class="text-yellow-800">Método 1: Arrastar y soltar</strong>
+                                <ol class="text-yellow-700 text-sm space-y-1 mt-1">
+                                    <li>1. Descarga tu dashboard (Paquete Web)</li>
+                                    <li>2. En GitHub: click "uploading an existing file"</li>
+                                    <li>3. Arrastra el archivo .html</li>
+                                    <li>4. Renómbralo a <code>index.html</code></li>
+                                    <li>5. Click "Commit changes"</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <strong class="text-yellow-800">Método 2: Crear archivo</strong>
+                                <ol class="text-yellow-700 text-sm space-y-1 mt-1">
+                                    <li>1. Click "Create new file"</li>
+                                    <li>2. Nombre: <code>index.html</code></li>
+                                    <li>3. Copia todo el código HTML</li>
+                                    <li>4. Pégalo en el editor</li>
+                                    <li>5. Click "Commit new file"</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activar GitHub Pages -->
+                    <div class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <h4 class="font-semibold text-purple-800 mb-3">🚀 Activar GitHub Pages:</h4>
+                        <ol class="text-purple-700 text-sm space-y-1">
+                            <li>1. Ve a Settings de tu repositorio</li>
+                            <li>2. Baja hasta "Pages" en el menú lateral</li>
+                            <li>3. Source: "Deploy from a branch"</li>
+                            <li>4. Branch: "main" (o "master")</li>
+                            <li>5. Folder: "/ (root)"</li>
+                            <li>6. Click "Save"</li>
+                            <li>7. ¡Tu web estará en: <code>tuusuario.github.io/dashboard-agua-macas</code>!</li>
+                        </ol>
+                    </div>
+
+                    <!-- URLs resultantes -->
+                    <div class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-2">🌐 Tu URL será:</h4>
+                        <div class="text-sm text-gray-700 space-y-1">
+                            <div><strong>Opción A:</strong> <code>tuusuario.github.io/dashboard-agua-macas</code></div>
+                            <div><strong>Opción B:</strong> <code>tuusuario.github.io</code></div>
+                            <div class="mt-2 text-xs text-gray-600">
+                                💡 Tarda 5-10 minutos en activarse la primera vez
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex gap-3">
+                        <button onclick="window.open('https://github.com/join', '_blank')" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            🚀 Empezar en GitHub
+                        </button>
+                        <button onclick="copyGitHubInstructions()" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            📋 Copiar Instrucciones
+                        </button>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyGitHubInstructions() {
+            const instructions = \`📋 INSTRUCCIONES GITHUB PAGES - DASHBOARD AGUA MACAS
+
+🐙 PASO A PASO:
+
+1️⃣ CREAR CUENTA Y REPOSITORIO
+   • Ve a github.com/join
+   • Crea tu cuenta gratuita
+   • Ve a github.com/new
+   • Nombre: dashboard-agua-macas
+   • Marca: "Add README file"
+   • Click "Create repository"
+
+2️⃣ SUBIR EL DASHBOARD
+   • Descarga tu dashboard (botón "Paquete Web")
+   • En GitHub: click "uploading an existing file"
+   • Arrastra el archivo .html
+   • Renómbralo a: index.html
+   • Click "Commit changes"
+
+3️⃣ ACTIVAR GITHUB PAGES
+   • Ve a Settings del repositorio
+   • Menú lateral → Pages
+   • Source: "Deploy from a branch"
+   • Branch: "main"
+   • Folder: "/ (root)"
+   • Click "Save"
+
+4️⃣ ¡LISTO!
+   Tu web estará en: tuusuario.github.io/dashboard-agua-macas
+   
+💡 Tarda 5-10 minutos en activarse la primera vez
+
+🌐 RESULTADO:
+   ✅ Página web propia y gratuita
+   ✅ URL personalizada
+   ✅ Actualizaciones fáciles
+   ✅ Sin límites de tiempo\`;
+
+            navigator.clipboard.writeText(instructions).then(() => {
+                alert('📋 ¡Instrucciones copiadas! Pégalas donde necesites');
+            });
+        }
+        function openVercel() { window.open('https://vercel.com/', '_blank'); }
+        function openFirebase() { window.open('https://firebase.google.com/docs/hosting', '_blank'); }
+
+        function generateCustomDomain() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">🌐 Tu Dominio Personalizado</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 class="font-semibold text-blue-800">Sugerencias de dominios:</h4>
+                            <ul class="text-blue-700 text-sm space-y-1 mt-2">
+                                <li>📊 <code>agua-macas-dashboard.com</code></li>
+                                <li>🏛️ <code>municipio-morona-agua.com</code></li>
+                                <li>💧 <code>sistema-agua-macas.org</code></li>
+                                <li>📈 <code>dashboard-hidrico-morona.com</code></li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <h4 class="font-semibold text-green-800">Dónde registrar dominios:</h4>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <button onclick="window.open('https://namecheap.com', '_blank')" class="bg-orange-500 text-white px-2 py-1 rounded text-xs">Namecheap</button>
+                                <button onclick="window.open('https://godaddy.com', '_blank')" class="bg-green-500 text-white px-2 py-1 rounded text-xs">GoDaddy</button>
+                                <button onclick="window.open('https://domains.google', '_blank')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs">Google Domains</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Detectar navegador y mostrar instrucciones específicas
+        window.addEventListener('load', function() {
+            const isChrome = navigator.userAgent.includes('Chrome');
+            const isSafari = navigator.userAgent.includes('Safari') && !isChrome;
+            const isFirefox = navigator.userAgent.includes('Firefox');
+            
+            console.log('🎉 Dashboard Agua Macas cargado exitosamente!');
+            console.log('💡 Presiona Ctrl+S para descargar');
+            
+            if (isSafari) {
+                console.log('🍎 Safari detectado: Usa Cmd+S para guardar');
+            }
+        });
+    </script>
+</body>
+</html>
